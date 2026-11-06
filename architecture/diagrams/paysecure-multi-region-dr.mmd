@@ -1,0 +1,51 @@
+﻿flowchart TB
+    M[Merchants and Payment Clients]
+    G[Global Traffic Management]
+
+    subgraph Mumbai["AWS Mumbai - ap-south-1 - Primary"]
+        A1[Payment API - Active]
+        DB1[(Aurora PostgreSQL - Primary)]
+        D1[(DynamoDB)]
+        R1[(ElastiCache Redis)]
+        K1[Kafka - Primary]
+    end
+
+    subgraph Hyderabad["AWS Hyderabad - ap-south-2 - DR"]
+        A2[Payment API - Warm Standby]
+        DB2[(Aurora PostgreSQL - Secondary)]
+        D2[(DynamoDB Replica)]
+        R2[(Redis DR Cache)]
+        K2[Kafka DR Cluster]
+    end
+
+    subgraph Operations["DR Operations and Safety"]
+        MON[Health and Replication Monitoring]
+        FC[Failover Controller]
+        WF[Writer Fencing and Approval]
+        REC[Post-Failover Reconciliation]
+    end
+
+    M --> G
+    G --> A1
+    A1 --> DB1
+    A1 --> D1
+    A1 --> R1
+    A1 --> K1
+
+    DB1 -. Replication .-> DB2
+    D1 -. Global Tables .-> D2
+    R1 -. Cache Replication .-> R2
+    K1 -. Event Replication .-> K2
+
+    MON --> FC
+    FC --> WF
+    WF -. Approved Failover .-> G
+    G -. Traffic Switch .-> A2
+
+    A2 --> DB2
+    A2 --> D2
+    A2 --> R2
+    A2 --> K2
+
+    REC --> A2
+    REC --> DB2
